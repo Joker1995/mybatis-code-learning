@@ -36,10 +36,12 @@ public class MetaClass {
 
   private MetaClass(Class<?> type, ReflectorFactory reflectorFactory) {
     this.reflectorFactory = reflectorFactory;
+    //根据类型创建Reflector
     this.reflector = reflectorFactory.findForClass(type);
   }
 
   public static MetaClass forClass(Class<?> type, ReflectorFactory reflectorFactory) {
+    //调用构造方法
     return new MetaClass(type, reflectorFactory);
   }
 
@@ -132,15 +134,21 @@ public class MetaClass {
   }
 
   public boolean hasSetter(String name) {
+    //属性分词器,用于解析属性名
     PropertyTokenizer prop = new PropertyTokenizer(name);
+    //复合属性的解析
     if (prop.hasNext()) {
+      //调用reflector的hasSetter方法
       if (reflector.hasSetter(prop.getName())) {
+        //为属性创建MetaClass
         MetaClass metaProp = metaClassForProperty(prop.getName());
+        调用hasSetter
         return metaProp.hasSetter(prop.getChildren());
       } else {
         return false;
       }
     } else {
+      //调用reflector的hasSetter方法
       return reflector.hasSetter(prop.getName());
     }
   }

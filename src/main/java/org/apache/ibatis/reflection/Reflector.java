@@ -62,12 +62,20 @@ public class Reflector {
 
   public Reflector(Class<?> clazz) {
     type = clazz;
+    //解析目标类的默认构造方法,并赋值给defaultConstructor变量
     addDefaultConstructor(clazz);
+    //解析getter方法,并将解析结果放入getMethods中
     addGetMethods(clazz);
+    //解析setter方法,并将解析结果放入setMethods中
     addSetMethods(clazz);
+    //解析属性字段,并将解析结果添加到setMethods或getMethods中
     addFields(clazz);
+    //从getMethods映射中获取可读的属性名数组
     readablePropertyNames = getMethods.keySet().toArray(new String[0]);
+    //从setMethods映射中获取可写属性名数组
     writablePropertyNames = setMethods.keySet().toArray(new String[0]);
+    //将所有属性名的大写形式作为key,属性名作为值
+    //存入到caseInsensitivePropertyMap中
     for (String propName : readablePropertyNames) {
       caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
     }
@@ -85,8 +93,12 @@ public class Reflector {
   private void addGetMethods(Class<?> clazz) {
     Map<String, List<Method>> conflictingGetters = new HashMap<>();
     Method[] methods = getClassMethods(clazz);
+    //获取当前类,接口,以及父类中的方法
+    //方法必须为方法参数个数为0且名称以isXXX或者getXXX开头的方法
+    //有冲突的方法统一存到conflictingGetters待后续解决
     Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 0 && PropertyNamer.isGetter(m.getName()))
       .forEach(m -> addMethodConflict(conflictingGetters, PropertyNamer.methodToProperty(m.getName()), m));
+    //解决冲突方法
     resolveGetterConflicts(conflictingGetters);
   }
 
@@ -100,8 +112,10 @@ public class Reflector {
           winner = candidate;
           continue;
         }
+        //获取返回值类型
         Class<?> winnerType = winner.getReturnType();
         Class<?> candidateType = candidate.getReturnType();
+        //返回类型一致,若返回值类型为boolean,选取isXXX为winner
         if (candidateType.equals(winnerType)) {
           if (!boolean.class.equals(candidateType)) {
             isAmbiguous = true;
@@ -109,8 +123,10 @@ public class Reflector {
           } else if (candidate.getName().startsWith("is")) {
             winner = candidate;
           }
+        //winnerType是candidateType的子类,类型上更为具体,当前winner较为合适
         } else if (candidateType.isAssignableFrom(winnerType)) {
           // OK getter type is descendant
+        //candidateType是winnerType的子类,类型上更为具体,candidate较为合适
         } else if (winnerType.isAssignableFrom(candidateType)) {
           winner = candidate;
         } else {
@@ -118,6 +134,7 @@ public class Reflector {
           break;
         }
       }
+      //将筛选的方法添加到getMethods中,并将方法返回值添加到getTypes中
       addGetMethod(propName, winner, isAmbiguous);
     }
   }
