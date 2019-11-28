@@ -27,17 +27,24 @@ public class PropertyTokenizer implements Iterator<PropertyTokenizer> {
   private final String children;
 
   public PropertyTokenizer(String fullname) {
+    //检测传入参数是否包含字符.
     int delim = fullname.indexOf('.');
     if (delim > -1) {
+      //以点为界,分为name和children,如fullName=www.qq.com 切分为name:www和children:qq.com
       name = fullname.substring(0, delim);
       children = fullname.substring(delim + 1);
     } else {
+      //如果不存在字符.
       name = fullname;
       children = null;
     }
     indexedName = name;
+    //检测传入参数是否包含[
     delim = name.indexOf('[');
     if (delim > -1) {
+      //获取中括号中的内容
+      //对于数组或List集合,[]中的内容为数组下标
+      //对于map,[]中的内容为key
       index = name.substring(delim + 1, name.length() - 1);
       name = name.substring(0, delim);
     }
@@ -66,6 +73,7 @@ public class PropertyTokenizer implements Iterator<PropertyTokenizer> {
 
   @Override
   public PropertyTokenizer next() {
+    //对child进行切分,解析多重复合属性
     return new PropertyTokenizer(children);
   }
 

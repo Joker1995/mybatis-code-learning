@@ -146,11 +146,17 @@ public class Reflector {
             name, method.getDeclaringClass().getName()))
         : new MethodInvoker(method);
     getMethods.put(name, invoker);
+    //解析返回值类型
     Type returnType = TypeParameterResolver.resolveReturnType(method, type);
+    //将返回值由type转class,并将转换后的结果缓存到getTypes中
     getTypes.put(name, typeToClass(returnType));
   }
 
   private void addSetMethods(Class<?> clazz) {
+    //获取当前类,接口,以及父类中的方法
+    //方法必须为方法参数个数为1且名称以setXXX开头的方法
+    //有冲突的方法统一存到conflictingSetters待后续解决
+    //冲突原因:存在方法重载
     Map<String, List<Method>> conflictingSetters = new HashMap<>();
     Method[] methods = getClassMethods(clazz);
     Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 1 && PropertyNamer.isSetter(m.getName()))
@@ -168,16 +174,19 @@ public class Reflector {
   private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
     for (String propName : conflictingSetters.keySet()) {
       List<Method> setters = conflictingSetters.get(propName);
+      //获取getter方法的返回值类型,因为getter方法不存在重载,可使用该方法反推setter方法
       Class<?> getterType = getTypes.get(propName);
       boolean isGetterAmbiguous = getMethods.get(propName) instanceof AmbiguousMethodInvoker;
       boolean isSetterAmbiguous = false;
       Method match = null;
       for (Method setter : setters) {
+        //参数类型和getter方法返回类型一致,认为是合适的选择
         if (!isGetterAmbiguous && setter.getParameterTypes()[0].equals(getterType)) {
           // should be the best match
           match = setter;
           break;
         }
+        //选择一个合适的方法
         if (!isSetterAmbiguous) {
           match = pickBetterSetter(match, setter, propName);
           isSetterAmbiguous = match == null;
@@ -195,8 +204,10 @@ public class Reflector {
     }
     Class<?> paramType1 = setter1.getParameterTypes()[0];
     Class<?> paramType2 = setter2.getParameterTypes()[0];
+    //如果方法2参数的返回值是方法1参数的子类,认为方法2更合适
     if (paramType1.isAssignableFrom(paramType2)) {
       return setter2;
+    //如果方法1参数的返回值是方法2参数的子类,认为方法1更合适
     } else if (paramType2.isAssignableFrom(paramType1)) {
       return setter1;
     }
@@ -213,7 +224,9 @@ public class Reflector {
   private void addSetMethod(String name, Method method) {
     MethodInvoker invoker = new MethodInvoker(method);
     setMethods.put(name, invoker);
+    //解析参数类型列表
     Type[] paramTypes = TypeParameterResolver.resolveParamTypes(method, type);
+    //将参数类型由type转class,并将转换后的结果缓存到setTypes中
     setTypes.put(name, typeToClass(paramTypes[0]));
   }
 
