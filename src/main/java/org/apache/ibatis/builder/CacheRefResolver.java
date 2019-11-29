@@ -30,6 +30,7 @@ public class CacheRefResolver {
   }
 
   public Cache resolveCacheRef() {
+    //调用builderAssistant的useCacheRef  方法
     return assistant.useCacheRef(cacheRefNamespace);
   }
 }

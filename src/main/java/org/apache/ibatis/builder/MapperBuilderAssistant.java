@@ -109,10 +109,13 @@ public class MapperBuilderAssistant extends BaseBuilder {
     }
     try {
       unresolvedCacheRef = true;
+      //根据命名空间从全局配置对象中查找相应的缓存实例
       Cache cache = configuration.getCache(namespace);
+      //如果未找到缓存实例,此处抛出异常,有两种情况导致,1)引用一个不存在的命名空间,2)引用的缓存实例未创建
       if (cache == null) {
         throw new IncompleteElementException("No cache for namespace '" + namespace + "' could be found.");
       }
+      //设置cache为当前使用缓存
       currentCache = cache;
       unresolvedCacheRef = false;
       return cache;
@@ -128,6 +131,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
       boolean readWrite,
       boolean blocking,
       Properties props) {
+    //使用构造模式构建缓存实例
     Cache cache = new CacheBuilder(currentNamespace)
         .implementation(valueOrDefault(typeClass, PerpetualCache.class))
         .addDecorator(valueOrDefault(evictionClass, LruCache.class))
@@ -137,7 +141,9 @@ public class MapperBuilderAssistant extends BaseBuilder {
         .blocking(blocking)
         .properties(props)
         .build();
+    //添加缓存到configuration对象
     configuration.addCache(cache);
+    //设置当前使用的缓存
     currentCache = cache;
     return cache;
   }
@@ -180,6 +186,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
       Discriminator discriminator,
       List<ResultMapping> resultMappings,
       Boolean autoMapping) {
+    //为resultMap的ID和extend属性值拼接命名空间
     id = applyCurrentNamespace(id, false);
     extend = applyCurrentNamespace(extend, true);
 
@@ -193,14 +200,17 @@ public class MapperBuilderAssistant extends BaseBuilder {
       // Remove parent constructor if this resultMap declares a constructor.
       boolean declaresConstructor = false;
       for (ResultMapping resultMapping : resultMappings) {
+        //检测是否包含CONSTRUCTOR标识元素
         if (resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR)) {
           declaresConstructor = true;
           break;
         }
       }
+      //如果resultMap节点包含Constructor节点,将拓展resultMappin中包含CONSTRUCTOR标识的元素移除
       if (declaresConstructor) {
         extendedResultMappings.removeIf(resultMapping -> resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR));
       }
+      //将拓展resultMappings集合合并到resultMappings集合中
       resultMappings.addAll(extendedResultMappings);
     }
     ResultMap resultMap = new ResultMap.Builder(configuration, id, type, resultMappings, autoMapping)
@@ -369,13 +379,16 @@ public class MapperBuilderAssistant extends BaseBuilder {
       String foreignColumn,
       boolean lazy) {
     Class<?> javaTypeClass = resolveResultJavaType(resultType, property, javaType);
+    //解析typeHandler
     TypeHandler<?> typeHandlerInstance = resolveTypeHandler(javaTypeClass, typeHandler);
+    //解析column
     List<ResultMapping> composites;
     if ((nestedSelect == null || nestedSelect.isEmpty()) && (foreignColumn == null || foreignColumn.isEmpty())) {
       composites = Collections.emptyList();
     } else {
       composites = parseCompositeColumnName(column);
     }
+    //构造resultMapping对象
     return new ResultMapping.Builder(configuration, property, column, javaTypeClass)
         .jdbcType(jdbcType)
         .nestedQueryId(applyCurrentNamespace(nestedSelect, true))

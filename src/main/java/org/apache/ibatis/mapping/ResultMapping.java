@@ -134,8 +134,10 @@ public class ResultMapping {
 
     public ResultMapping build() {
       // lock down collections
+      //将flags和composites设置为不可修改集合
       resultMapping.flags = Collections.unmodifiableList(resultMapping.flags);
       resultMapping.composites = Collections.unmodifiableList(resultMapping.composites);
+      //从typeHandlerRegistry获取相应的typeHandler
       resolveTypeHandler();
       validate();
       return resultMapping;

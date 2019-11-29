@@ -175,14 +175,19 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void typeAliasesElement(XNode parent) {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
+        //从自动的包中解析别名和类型的映射
         if ("package".equals(child.getName())) {
           String typeAliasPackage = child.getStringAttribute("name");
           configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
+        //从typeAlias节点中解析
         } else {
+          // 获取alias和type属性值,alias不是必填,可为空
           String alias = child.getStringAttribute("alias");
           String type = child.getStringAttribute("type");
           try {
+            //加载type对应的类型
             Class<?> clazz = Resources.classForName(type);
+            //注册别名到类型的映射
             if (alias == null) {
               typeAliasRegistry.registerAlias(clazz);
             } else {
@@ -200,9 +205,13 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
         String interceptor = child.getStringAttribute("interceptor");
+        //获取配置信息
         Properties properties = child.getChildrenAsProperties();
+        //解析拦截器的类型,并创建拦截器
         Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).getDeclaredConstructor().newInstance();
+        //设置属性
         interceptorInstance.setProperties(properties);
+        //添加拦截器到configuration中
         configuration.addInterceptor(interceptorInstance);
       }
     }
@@ -268,8 +277,11 @@ public class XMLConfigBuilder extends BaseBuilder {
   }
 
   private void settingsElement(Properties props) {
+    //设置autoMappingBehavior属性,默认为PARTIAL(自动映射没有定义嵌套结果集映射的结果集)
+    //注:NONE表示取消自动映射,FULL表示自动映射任意复杂的结果
     configuration.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
     configuration.setAutoMappingUnknownColumnBehavior(AutoMappingUnknownColumnBehavior.valueOf(props.getProperty("autoMappingUnknownColumnBehavior", "NONE")));
+    //设置cacheEnabled属性默认为true
     configuration.setCacheEnabled(booleanValueOf(props.getProperty("cacheEnabled"), true));
     configuration.setProxyFactory((ProxyFactory) createInstance(props.getProperty("proxyFactory")));
     configuration.setLazyLoadingEnabled(booleanValueOf(props.getProperty("lazyLoadingEnabled"), false));
@@ -288,6 +300,7 @@ public class XMLConfigBuilder extends BaseBuilder {
     configuration.setLazyLoadTriggerMethods(stringSetValueOf(props.getProperty("lazyLoadTriggerMethods"), "equals,clone,hashCode,toString"));
     configuration.setSafeResultHandlerEnabled(booleanValueOf(props.getProperty("safeResultHandlerEnabled"), true));
     configuration.setDefaultScriptingLanguage(resolveClass(props.getProperty("defaultScriptingLanguage")));
+    //设置默认枚举处理器
     configuration.setDefaultEnumTypeHandler(resolveClass(props.getProperty("defaultEnumTypeHandler")));
     configuration.setCallSettersOnNulls(booleanValueOf(props.getProperty("callSettersOnNulls"), false));
     configuration.setUseActualParamName(booleanValueOf(props.getProperty("useActualParamName"), true));
@@ -299,17 +312,24 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void environmentsElement(XNode context) throws Exception {
     if (context != null) {
       if (environment == null) {
+        //获取default属性
         environment = context.getStringAttribute("default");
       }
       for (XNode child : context.getChildren()) {
+        //获取id属性
         String id = child.getStringAttribute("id");
+        //检测当前environment节点的id与其父节点environment的属性default内容是否一致,实则返回true
         if (isSpecifiedEnvironment(id)) {
+          //解析transactionManager节点
           TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
+          //解析dataSource节点
           DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
+          //创建dataSource对象
           DataSource dataSource = dsFactory.getDataSource();
           Environment.Builder environmentBuilder = new Environment.Builder(id)
               .transactionFactory(txFactory)
               .dataSource(dataSource);
+          //构建environment对象并设置到configuration中
           configuration.setEnvironment(environmentBuilder.build());
         }
       }
@@ -360,16 +380,22 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void typeHandlerElement(XNode parent) {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
+        //从指定的包中注册typeHandler
         if ("package".equals(child.getName())) {
           String typeHandlerPackage = child.getStringAttribute("name");
           typeHandlerRegistry.register(typeHandlerPackage);
+        //从typeHandler节点解析别名到类型的映射
         } else {
           String javaTypeName = child.getStringAttribute("javaType");
           String jdbcTypeName = child.getStringAttribute("jdbcType");
           String handlerTypeName = child.getStringAttribute("handler");
+
+          //解析上面获取到的属性值
           Class<?> javaTypeClass = resolveClass(javaTypeName);
           JdbcType jdbcType = resolveJdbcType(jdbcTypeName);
           Class<?> typeHandlerClass = resolveClass(handlerTypeName);
+
+          //根据javaTypeClass和jdbcType值分情况进行不同策略的注册
           if (javaTypeClass != null) {
             if (jdbcType == null) {
               typeHandlerRegistry.register(javaTypeClass, typeHandlerClass);
@@ -388,22 +414,30 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
         if ("package".equals(child.getName())) {
+          //获取package节点中name的属性值
           String mapperPackage = child.getStringAttribute("name");
+          //从指定包中查找mapper接口并根据mapper接口解析映射配置
           configuration.addMappers(mapperPackage);
         } else {
+          //获取resource/class/url属性
           String resource = child.getStringAttribute("resource");
           String url = child.getStringAttribute("url");
           String mapperClass = child.getStringAttribute("class");
+          //resource不为空,且其他两者为空,则从其他路径中加载配置
           if (resource != null && url == null && mapperClass == null) {
             ErrorContext.instance().resource(resource);
             InputStream inputStream = Resources.getResourceAsStream(resource);
             XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
+            //解析映射文件
             mapperParser.parse();
+          //url不为空,且其他两者为空,则通过url加载配置
           } else if (resource == null && url != null && mapperClass == null) {
             ErrorContext.instance().resource(url);
             InputStream inputStream = Resources.getUrlAsStream(url);
             XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
+            //解析映射文件
             mapperParser.parse();
+          //mapperClass不为空,且其他两者为空,则通过mapperClass解析映射配置
           } else if (resource == null && url == null && mapperClass != null) {
             Class<?> mapperInterface = Resources.classForName(mapperClass);
             configuration.addMapper(mapperInterface);
