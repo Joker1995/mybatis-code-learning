@@ -136,6 +136,7 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void buildStatementFromContext(List<XNode> list) {
     if (configuration.getDatabaseId() != null) {
+      //调用重载方法构建statement
       buildStatementFromContext(list, configuration.getDatabaseId());
     }
     buildStatementFromContext(list, null);
@@ -143,10 +144,13 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void buildStatementFromContext(List<XNode> list, String requiredDatabaseId) {
     for (XNode context : list) {
+      //创建statement构造类
       final XMLStatementBuilder statementParser = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
       try {
+        //解析statement节点,将解析结果缓存到configuration的mappedStatements集合中
         statementParser.parseStatementNode();
       } catch (IncompleteElementException e) {
+        //解析失败,将解析器放入configuration的incompleteStatements集合中
         configuration.addIncompleteStatement(statementParser);
       }
     }
@@ -365,17 +369,22 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void sqlElement(List<XNode> list) {
     if (configuration.getDatabaseId() != null) {
+      //调用sqlElement解析<sql>节点,用于解析带databaseId的sql节点
       sqlElement(list, configuration.getDatabaseId());
     }
+    //调用sqlElement解析<sql>节点,用于解析未配置databaseId的sql节点
     sqlElement(list, null);
   }
 
   private void sqlElement(List<XNode> list, String requiredDatabaseId) {
     for (XNode context : list) {
+      //获取id和databaseId属性
       String databaseId = context.getStringAttribute("databaseId");
       String id = context.getStringAttribute("id");
       id = builderAssistant.applyCurrentNamespace(id, false);
+      //检测当前databaseId和requiredDatabaseId是否一致
       if (databaseIdMatchesCurrent(id, databaseId, requiredDatabaseId)) {
+        //将<id,Xnode>键值对缓存到sqlFragments
         sqlFragments.put(id, context);
       }
     }
@@ -388,6 +397,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     if (databaseId != null) {
       return false;
     }
+    //当前<sql>节点ID和之前<sql>节点重复,且databaseId不为空,忽略当前节点,返回false
     if (!this.sqlFragments.containsKey(id)) {
       return true;
     }

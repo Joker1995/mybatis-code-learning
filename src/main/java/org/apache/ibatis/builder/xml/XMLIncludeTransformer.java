@@ -46,6 +46,7 @@ public class XMLIncludeTransformer {
   public void applyIncludes(Node source) {
     Properties variablesContext = new Properties();
     Properties configurationVariables = configuration.getVariables();
+    //将configurationVariables添加到variablesContext中
     Optional.ofNullable(configurationVariables).ifPresent(variablesContext::putAll);
     applyIncludes(source, variablesContext, false);
   }
@@ -57,16 +58,24 @@ public class XMLIncludeTransformer {
    */
   private void applyIncludes(Node source, final Properties variablesContext, boolean included) {
     if (source.getNodeName().equals("include")) {
+      //获取<sql>节点,refId包含占位符${},将属性占位符替换为对应符
       Node toInclude = findSqlFragment(getStringAttribute(source, "refid"), variablesContext);
+      //解析<include>子节点<property>,并将解析结果与variablesContext融合,
+      //然后返回融合后的properties,若property节点的value属性存在占位符,则替换为对应值
       Properties toIncludeContext = getVariablesContext(source, variablesContext);
+      //递归调用
       applyIncludes(toInclude, toIncludeContext, true);
+      //如果<sql>和<include>节点不在同一文件,则从其他文档将<sql>节点引入<include>所在文档
       if (toInclude.getOwnerDocument() != source.getOwnerDocument()) {
         toInclude = source.getOwnerDocument().importNode(toInclude, true);
       }
+      //将<include>节点替换为<sql>节点
       source.getParentNode().replaceChild(toInclude, source);
       while (toInclude.hasChildNodes()) {
+        //将<sql>中的内容插入到<sql>节点前
         toInclude.getParentNode().insertBefore(toInclude.getFirstChild(), toInclude);
       }
+      //<sql>节点内容已经插入到dom中,从dom移除该节点
       toInclude.getParentNode().removeChild(toInclude);
     } else if (source.getNodeType() == Node.ELEMENT_NODE) {
       if (included && !variablesContext.isEmpty()) {
@@ -74,16 +83,19 @@ public class XMLIncludeTransformer {
         NamedNodeMap attributes = source.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
           Node attr = attributes.item(i);
+          //将source节点属性中的占位符替换成具体属性值
           attr.setNodeValue(PropertyParser.parse(attr.getNodeValue(), variablesContext));
         }
       }
       NodeList children = source.getChildNodes();
       for (int i = 0; i < children.getLength(); i++) {
+        //递归调用
         applyIncludes(children.item(i), variablesContext, included);
       }
     } else if (included && (source.getNodeType() == Node.TEXT_NODE || source.getNodeType() == Node.CDATA_SECTION_NODE)
         && !variablesContext.isEmpty()) {
       // replace variables in text node
+      //将文本节点的属性占位符替换成具体属性值
       source.setNodeValue(PropertyParser.parse(source.getNodeValue(), variablesContext));
     }
   }
