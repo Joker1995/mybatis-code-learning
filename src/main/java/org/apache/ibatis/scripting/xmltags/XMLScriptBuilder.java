@@ -50,7 +50,7 @@ public class XMLScriptBuilder extends BaseBuilder {
     initNodeHandlerMap();
   }
 
-
+  //初始化nodeHandlerMap集合
   private void initNodeHandlerMap() {
     nodeHandlerMap.put("trim", new TrimHandler());
     nodeHandlerMap.put("where", new WhereHandler());
@@ -64,8 +64,10 @@ public class XMLScriptBuilder extends BaseBuilder {
   }
 
   public SqlSource parseScriptNode() {
+    // 解析SQL语句节点
     MixedSqlNode rootSqlNode = parseDynamicTags(context);
     SqlSource sqlSource;
+    //根据isDynamic状态创建不同的SqlSource,判断是否包含${}以及动态SQL节点
     if (isDynamic) {
       sqlSource = new DynamicSqlSource(configuration, rootSqlNode);
     } else {
@@ -77,23 +79,31 @@ public class XMLScriptBuilder extends BaseBuilder {
   protected MixedSqlNode parseDynamicTags(XNode node) {
     List<SqlNode> contents = new ArrayList<>();
     NodeList children = node.getNode().getChildNodes();
+    //遍历子节点
     for (int i = 0; i < children.getLength(); i++) {
       XNode child = node.newXNode(children.item(i));
       if (child.getNode().getNodeType() == Node.CDATA_SECTION_NODE || child.getNode().getNodeType() == Node.TEXT_NODE) {
+        //获取文本内容
         String data = child.getStringBody("");
         TextSqlNode textSqlNode = new TextSqlNode(data);
+        //若文本内包含${},认为是动态节点
         if (textSqlNode.isDynamic()) {
           contents.add(textSqlNode);
           isDynamic = true;
         } else {
+          //创建StaticTextSqlNode
           contents.add(new StaticTextSqlNode(data));
         }
+      //child节点是ELEMENT_NODE类型,比如<if><where>等
       } else if (child.getNode().getNodeType() == Node.ELEMENT_NODE) { // issue #628
+        //获取节点名称
         String nodeName = child.getNode().getNodeName();
+        //根据节点名称获取nodeHandler
         NodeHandler handler = nodeHandlerMap.get(nodeName);
         if (handler == null) {
           throw new BuilderException("Unknown element <" + nodeName + "> in SQL statement.");
         }
+        //处理child节点,生成相应SQL NODE
         handler.handleNode(child, contents);
         isDynamic = true;
       }

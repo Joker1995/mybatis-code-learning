@@ -279,7 +279,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
 
     id = applyCurrentNamespace(id, false);
     boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
-
+    //创建构造器,设置各种属性
     MappedStatement.Builder statementBuilder = new MappedStatement.Builder(configuration, id, sqlSource, sqlCommandType)
         .resource(resource)
         .fetchSize(fetchSize)
@@ -297,13 +297,14 @@ public class MapperBuilderAssistant extends BaseBuilder {
         .flushCacheRequired(valueOrDefault(flushCache, !isSelect))
         .useCache(valueOrDefault(useCache, isSelect))
         .cache(currentCache);
-
+    //获取或创建ParameterMap
     ParameterMap statementParameterMap = getStatementParameterMap(parameterMap, parameterType, id);
     if (statementParameterMap != null) {
       statementBuilder.parameterMap(statementParameterMap);
     }
-
+    //构建MappedStatement
     MappedStatement statement = statementBuilder.build();
+    //添加MappedStatement到configuration的MappedStatements集合
     configuration.addMappedStatement(statement);
     return statement;
   }

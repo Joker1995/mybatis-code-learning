@@ -777,6 +777,7 @@ public class Configuration {
   }
 
   public <T> void addMapper(Class<T> type) {
+    //通过mapperRegistry绑定mapper
     mapperRegistry.addMapper(type);
   }
 
