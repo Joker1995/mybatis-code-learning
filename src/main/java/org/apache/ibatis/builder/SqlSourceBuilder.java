@@ -40,9 +40,13 @@ public class SqlSourceBuilder extends BaseBuilder {
   }
 
   public SqlSource parse(String originalSql, Class<?> parameterType, Map<String, Object> additionalParameters) {
+    //创建#{}占位符处理器
     ParameterMappingTokenHandler handler = new ParameterMappingTokenHandler(configuration, parameterType, additionalParameters);
+    //创建#{}占位符解析器
     GenericTokenParser parser = new GenericTokenParser("#{", "}", handler);
+    //解析#{}占位符并返回解析结果
     String sql = parser.parse(originalSql);
+    //封装解析结果到StaticSqlSource
     return new StaticSqlSource(configuration, sql, handler.getParameterMappings());
   }
 
@@ -64,14 +68,29 @@ public class SqlSourceBuilder extends BaseBuilder {
 
     @Override
     public String handleToken(String content) {
+      //获取content对应的ParameterMapping
       parameterMappings.add(buildParameterMapping(content));
       return "?";
     }
 
     private ParameterMapping buildParameterMapping(String content) {
+      /*
+       *将#{xxx}占位符内容解析成map
+       *如:#{age,javaType=int,jdbcType=Numberic,typeHandler=myHandler}
+       *解析结果为:
+       *{
+       * "property":"age",
+       * "typeHandler":"myHandler",
+       * "jdbcType":"Numberic",
+       * "javaType":"int"
+       *}
+      */
       Map<String, String> propertiesMap = parseParameterMapping(content);
       String property = propertiesMap.get("property");
       Class<?> propertyType;
+      //parameterType是运行时参数类型,传入单个参数如Articke对象,parameterType为article
+      //传入多个参数,mybatis用paramMap封装，parameterType为paramMap
+      //如果parameterType有相应的typeHandler,将propertyType设置为parameterType
       if (metaParameters.hasGetter(property)) { // issue #448 get type from additional params
         propertyType = metaParameters.getGetterType(property);
       } else if (typeHandlerRegistry.hasTypeHandler(parameterType)) {
@@ -79,25 +98,32 @@ public class SqlSourceBuilder extends BaseBuilder {
       } else if (JdbcType.CURSOR.name().equals(propertiesMap.get("jdbcType"))) {
         propertyType = java.sql.ResultSet.class;
       } else if (property == null || Map.class.isAssignableFrom(parameterType)) {
+        //如果property为空获取parameterType是map类型,propertyType设为Object.class
         propertyType = Object.class;
       } else {
+        //parameterType是自定义类,为该类创建一个元信息对象
         MetaClass metaClass = MetaClass.forClass(parameterType, configuration.getReflectorFactory());
+        //检查有没有对应getter
         if (metaClass.hasGetter(property)) {
+          //获取成员变量类型
           propertyType = metaClass.getGetterType(property);
         } else {
           propertyType = Object.class;
         }
       }
       ParameterMapping.Builder builder = new ParameterMapping.Builder(configuration, property, propertyType);
+      //将propertyType赋给javaType
       Class<?> javaType = propertyType;
       String typeHandlerAlias = null;
       for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
         String name = entry.getKey();
         String value = entry.getValue();
         if ("javaType".equals(name)) {
+          //如果用户明确配置了javaType,以配置为准
           javaType = resolveClass(value);
           builder.javaType(javaType);
         } else if ("jdbcType".equals(name)) {
+          //解析jdbcType
           builder.jdbcType(resolveJdbcType(value));
         } else if ("mode".equals(name)) {
           builder.mode(resolveParameterMode(value));
@@ -118,8 +144,10 @@ public class SqlSourceBuilder extends BaseBuilder {
         }
       }
       if (typeHandlerAlias != null) {
+        //解析typeHandler
         builder.typeHandler(resolveTypeHandler(javaType, typeHandlerAlias));
       }
+      //构建parameterMapping对象
       return builder.build();
     }
 
