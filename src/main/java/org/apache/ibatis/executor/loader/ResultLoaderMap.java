@@ -50,12 +50,14 @@ public class ResultLoaderMap {
   private final Map<String, LoadPair> loaderMap = new HashMap<>();
 
   public void addLoader(String property, MetaObject metaResultObject, ResultLoader resultLoader) {
+    //将属性名转为大写
     String upperFirst = getUppercaseFirstProperty(property);
     if (!upperFirst.equalsIgnoreCase(property) && loaderMap.containsKey(upperFirst)) {
       throw new ExecutorException("Nested lazy loaded result property '" + property
               + "' for query id '" + resultLoader.mappedStatement.getId()
               + " already exists in the result map. The leftmost property of all lazy loaded properties must be unique within a result map.");
     }
+    //创建LoadPair,并将<大写属性名,LoadPair>添加到loaderMap
     loaderMap.put(upperFirst, new LoadPair(property, metaResultObject, resultLoader));
   }
 
@@ -76,8 +78,10 @@ public class ResultLoaderMap {
   }
 
   public boolean load(String property) throws SQLException {
+    //从loaderMap移除LoadPair
     LoadPair pair = loaderMap.remove(property.toUpperCase(Locale.ENGLISH));
     if (pair != null) {
+      //加载结果
       pair.load();
       return true;
     }
@@ -185,6 +189,7 @@ public class ResultLoaderMap {
     }
 
     public void load(final Object userObject) throws SQLException {
+      //若metaResultObject和resultLoader为null,创建相关读写
       if (this.metaResultObject == null || this.resultLoader == null) {
         if (this.mappedParameter == null) {
           throw new ExecutorException("Property [" + this.property + "] cannot be loaded because "
@@ -200,7 +205,7 @@ public class ResultLoaderMap {
                   + "] because configuration does not contain statement ["
                   + this.mappedStatement + "]");
         }
-
+        //创建resultLoader,调用resultLoader的loadResult方法加载结果.并通过metaResultObject设置结果到实体类对象
         this.metaResultObject = config.newMetaObject(userObject);
         this.resultLoader = new ResultLoader(config, new ClosedExecutor(), ms, this.mappedParameter,
                 metaResultObject.getSetterType(this.property), null, null);

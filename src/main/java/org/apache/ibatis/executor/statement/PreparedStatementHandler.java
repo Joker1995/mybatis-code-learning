@@ -75,6 +75,7 @@ public class PreparedStatementHandler extends BaseStatementHandler {
   @Override
   protected Statement instantiateStatement(Connection connection) throws SQLException {
     String sql = boundSql.getSql();
+    //根据条件调用不同的prepareStatement方法创建prepareStatement
     if (mappedStatement.getKeyGenerator() instanceof Jdbc3KeyGenerator) {
       String[] keyColumnNames = mappedStatement.getKeyColumns();
       if (keyColumnNames == null) {
@@ -91,6 +92,7 @@ public class PreparedStatementHandler extends BaseStatementHandler {
 
   @Override
   public void parameterize(Statement statement) throws SQLException {
+    //通过参数处理器parameterHandler设置运行时参数到prepareStatement中
     parameterHandler.setParameters((PreparedStatement) statement);
   }
 

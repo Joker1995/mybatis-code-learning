@@ -61,21 +61,28 @@ public class DefaultParameterHandler implements ParameterHandler {
   @Override
   public void setParameters(PreparedStatement ps) {
     ErrorContext.instance().activity("setting parameters").object(mappedStatement.getParameterMap().getId());
+    //从boundSql获取parameterMapping列表,每个parameterMapping与原始SQL中的#{xx}对应
     List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
     if (parameterMappings != null) {
       for (int i = 0; i < parameterMappings.size(); i++) {
         ParameterMapping parameterMapping = parameterMappings.get(i);
+        //检测参数类型,排除mode为out的parameterMapping
         if (parameterMapping.getMode() != ParameterMode.OUT) {
           Object value;
+          //获取属性名
           String propertyName = parameterMapping.getProperty();
+          //检测boundSql的additionParameter是否包含propertyName
           if (boundSql.hasAdditionalParameter(propertyName)) { // issue #448 ask first for additional params
             value = boundSql.getAdditionalParameter(propertyName);
           } else if (parameterObject == null) {
             value = null;
+          //检测运行时参数是否有相应的类型解析器,有则将parameterObject设置为属性值
           } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
             value = parameterObject;
           } else {
+            //为用户传入参数parameterObject创建元信息对象
             MetaObject metaObject = configuration.newMetaObject(parameterObject);
+            //从用户传入参数中获取propertyName对应的值
             value = metaObject.getValue(propertyName);
           }
           TypeHandler typeHandler = parameterMapping.getTypeHandler();
@@ -84,6 +91,7 @@ public class DefaultParameterHandler implements ParameterHandler {
             jdbcType = configuration.getJdbcTypeForNull();
           }
           try {
+            //由类型处理器向parameterHandler设置参数
             typeHandler.setParameter(ps, i + 1, value, jdbcType);
           } catch (TypeException | SQLException e) {
             throw new TypeException("Could not set parameters for mapping: " + parameterMapping + ". Cause: " + e, e);
