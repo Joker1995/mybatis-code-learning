@@ -376,15 +376,19 @@ public class DefaultResultSetHandler implements ResultSetHandler {
 
   private void storeObject(ResultHandler<?> resultHandler, DefaultResultContext<Object> resultContext, Object rowValue, ResultMapping parentMapping, ResultSet rs) throws SQLException {
     if (parentMapping != null) {
+      //多结果集
       linkToParents(rs, parentMapping, rowValue);
     } else {
+      //存储结果
       callResultHandler(resultHandler, resultContext, rowValue);
     }
   }
 
   @SuppressWarnings("unchecked" /* because ResultHandler<?> is always ResultHandler<Object>*/)
   private void callResultHandler(ResultHandler<?> resultHandler, DefaultResultContext<Object> resultContext, Object rowValue) {
+    //设置结果到resultContext中
     resultContext.nextResultObject(rowValue);
+    //从resultContext获取结果,并存储的resultHandler中
     ((ResultHandler<Object>) resultHandler).handleResult(resultContext);
   }
 

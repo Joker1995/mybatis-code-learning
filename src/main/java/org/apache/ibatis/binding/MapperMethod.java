@@ -120,13 +120,18 @@ public class MapperMethod {
 
   private Object rowCountResult(int rowCount) {
     final Object result;
+    //方法类型是MethodSignature
     if (method.returnsVoid()) {
+      //返回类型为void
       result = null;
     } else if (Integer.class.equals(method.getReturnType()) || Integer.TYPE.equals(method.getReturnType())) {
+      //返回结果为integer或int,直接赋值
       result = rowCount;
     } else if (Long.class.equals(method.getReturnType()) || Long.TYPE.equals(method.getReturnType())) {
+      //返回long类型或者long,直接强转
       result = (long)rowCount;
     } else if (Boolean.class.equals(method.getReturnType()) || Boolean.TYPE.equals(method.getReturnType())) {
+      //返回布尔类型,rowCount>0为true,否则为false
       result = rowCount > 0;
     } else {
       throw new BindingException("Mapper method '" + command.getName() + "' has an unsupported return type: " + method.getReturnType());
