@@ -33,12 +33,19 @@ class PooledConnection implements InvocationHandler {
 
   private final int hashCode;
   private final PooledDataSource dataSource;
+  //真实的数据库连接
   private final Connection realConnection;
+  //数据库连接代理
   private final Connection proxyConnection;
+  //从连接池中取出连接时的时间戳
   private long checkoutTimestamp;
+  //数据库连接创建时间戳
   private long createdTimestamp;
+  //数据库连接最后使用时间
   private long lastUsedTimestamp;
+  //connectionTypeCode = (url+username+password).hashCode()
   private int connectionTypeCode;
+  //表示是否有效
   private boolean valid;
 
   /**
